@@ -66,6 +66,11 @@ export default function Dashboard() {
         delete newPreviews[id];
         return newPreviews;
       });
+      // Regenerate QR preview with updated URL
+      const updatedLink = qrLinks.find(link => link.id === id);
+      if (updatedLink) {
+        generateQRPreview({ ...updatedLink, destination_url: editValue.trim() });
+      }
     } catch (error) {
       console.error('Error updating link:', error);
       alert('Failed to update link. Please try again.');

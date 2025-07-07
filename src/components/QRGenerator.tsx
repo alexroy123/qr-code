@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { QrCode, Download, Copy, Check, AlertCircle, ExternalLink } from 'lucide-react';
 import QRCodeLib from 'qrcode';
+import { supabase } from '../lib/supabase';
 
 export default function QRGenerator() {
   const [url, setUrl] = useState('');
@@ -29,6 +30,13 @@ export default function QRGenerator() {
           light: '#FFFFFF'
         }
       });
+
+      // Store in Supabase
+      const { error } = await supabase.from('qr_links').insert({ destination_url: url.trim() });
+      if (error) {
+        console.error('Error saving to database:', error);
+        alert('Failed to save QR code to database.');
+      }
 
       setQrData({
         redirectUrl,
