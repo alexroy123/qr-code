@@ -1,12 +1,15 @@
 import React, { useState } from 'react';
-import { QrCode, Download, Copy, Check, AlertCircle, ExternalLink } from 'lucide-react';
+import { QrCode, Download, Copy, Check, AlertCircle, ExternalLink, Save } from 'lucide-react';
 import QRCodeLib from 'qrcode';
+import { supabase } from '../lib/supabase';
 
 export default function QRGenerator() {
   const [url, setUrl] = useState('');
   const [qrData, setQrData] = useState<{ redirectUrl: string; qrCodeUrl: string } | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
 
   const generateQRCode = async () => {
     if (!url.trim()) return;
@@ -34,11 +37,39 @@ export default function QRGenerator() {
         redirectUrl,
         qrCodeUrl
       });
+
+      // Reset saved state when generating new QR
+      setSaved(false);
     } catch (error) {
       console.error('Error generating QR code:', error);
       alert('Failed to generate QR code. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveToDatabase = async () => {
+    if (!url.trim()) return;
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('qr_links')
+        .insert([
+          {
+            destination_url: url.trim()
+          }
+        ]);
+
+      if (error) throw error;
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+    } catch (error) {
+      console.error('Error saving QR code:', error);
+      alert('Failed to save QR code to dashboard. The QR code still works!');
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -185,6 +216,33 @@ export default function QRGenerator() {
                 </div>
               </div>
 
+              {/* Save to Dashboard Section */}
+              <div className="w-full p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-blue-900">Save to Dashboard</h3>
+                    <p className="text-sm text-blue-700">Store this QR code for future management</p>
+                  </div>
+                  <button
+                    onClick={saveToDatabase}
+                    disabled={saving || saved}
+                    className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-green-600 disabled:cursor-not-allowed transition-colors"
+                  >
+                    {saved ? (
+                      <>
+                        <Check className="w-4 h-4" />
+                        <span className="text-sm">Saved!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Save className="w-4 h-4" />
+                        <span className="text-sm">{saving ? 'Saving...' : 'Save'}</span>
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+
               <div className="flex flex-wrap gap-3 justify-center">
                 <button
                   onClick={downloadQR}
@@ -200,10 +258,18 @@ export default function QRGenerator() {
                   <QrCode className="w-4 h-4" />
                   <span>Test Redirect</span>
                 </button>
+                <a
+                  href="/dashboard"
+                  className="flex items-center space-x-2 px-6 py-3 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>View Dashboard</span>
+                </a>
                 <button
                   onClick={() => {
                     setQrData(null);
                     setUrl('');
+                    setSaved(false);
                   }}
                   className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                 >
