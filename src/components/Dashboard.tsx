@@ -102,14 +102,11 @@ export default function Dashboard() {
     }
   };
 
-  const copyLink = async (destinationUrl: string) => {
-    // Generate the direct redirect URL
-    const encodedUrl = encodeURIComponent(destinationUrl);
-    const redirectUrl = `${window.location.origin}/q?url=${encodedUrl}`;
-    
+  const copyLink = async (id: string) => {
+    const redirectUrl = `${window.location.origin}/q?id=${id}`;
     try {
       await navigator.clipboard.writeText(redirectUrl);
-      setCopiedId(destinationUrl);
+      setCopiedId(id);
       setTimeout(() => setCopiedId(null), 2000);
     } catch (error) {
       console.error('Failed to copy link:', error);
@@ -118,12 +115,8 @@ export default function Dashboard() {
 
   const generateQRPreview = async (link: QRLink) => {
     if (qrPreviews[link.id]) return;
-
     try {
-      // Generate the direct redirect URL (same as in QRGenerator)
-      const encodedUrl = encodeURIComponent(link.destination_url);
-      const redirectUrl = `${window.location.origin}/q?url=${encodedUrl}`;
-      
+      const redirectUrl = `${window.location.origin}/q?id=${link.id}`;
       const qrCodeUrl = await QRCodeLib.toDataURL(redirectUrl, {
         width: 200,
         margin: 1,
@@ -132,7 +125,6 @@ export default function Dashboard() {
           light: '#FFFFFF'
         }
       });
-
       setQrPreviews(prev => ({ ...prev, [link.id]: qrCodeUrl }));
     } catch (error) {
       console.error('Error generating QR preview:', error);
@@ -141,10 +133,7 @@ export default function Dashboard() {
 
   const downloadQR = async (link: QRLink) => {
     try {
-      // Generate full-size QR code for download
-      const encodedUrl = encodeURIComponent(link.destination_url);
-      const redirectUrl = `${window.location.origin}/q?url=${encodedUrl}`;
-      
+      const redirectUrl = `${window.location.origin}/q?id=${link.id}`;
       const qrCodeUrl = await QRCodeLib.toDataURL(redirectUrl, {
         width: 300,
         margin: 2,
@@ -153,7 +142,6 @@ export default function Dashboard() {
           light: '#FFFFFF'
         }
       });
-
       const downloadLink = document.createElement('a');
       downloadLink.download = `qr-code-${link.id}.png`;
       downloadLink.href = qrCodeUrl;
@@ -163,9 +151,8 @@ export default function Dashboard() {
     }
   };
 
-  const testRedirect = (destinationUrl: string) => {
-    const encodedUrl = encodeURIComponent(destinationUrl);
-    const redirectUrl = `${window.location.origin}/q?url=${encodedUrl}`;
+  const testRedirect = (id: string) => {
+    const redirectUrl = `${window.location.origin}/q?id=${id}`;
     window.open(redirectUrl, '_blank');
   };
 

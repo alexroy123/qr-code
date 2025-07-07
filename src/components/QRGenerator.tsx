@@ -14,14 +14,17 @@ export default function QRGenerator() {
 
     setLoading(true);
     try {
-      // Encode the URL directly in the redirect URL
-      const encodedUrl = encodeURIComponent(url.trim());
-      const redirectUrl = `${window.location.origin}/q?url=${encodedUrl}`;
-      
-      console.log('Generated redirect URL:', redirectUrl);
-      console.log('Will redirect to:', url.trim());
-
-      // Generate QR code
+      // Store in Supabase and get the new row's ID
+      const { data, error } = await supabase.from('qr_links').insert({ destination_url: url.trim() }).select('id').single();
+      if (error || !data) {
+        console.error('Error saving to database:', error);
+        alert('Failed to save QR code to database.');
+        setLoading(false);
+        return;
+      }
+      const id = data.id;
+      // Use the ID in the redirect URL
+      const redirectUrl = `${window.location.origin}/q?id=${id}`;
       const qrCodeUrl = await QRCodeLib.toDataURL(redirectUrl, {
         width: 300,
         margin: 2,
@@ -30,14 +33,6 @@ export default function QRGenerator() {
           light: '#FFFFFF'
         }
       });
-
-      // Store in Supabase
-      const { error } = await supabase.from('qr_links').insert({ destination_url: url.trim() });
-      if (error) {
-        console.error('Error saving to database:', error);
-        alert('Failed to save QR code to database.');
-      }
-
       setQrData({
         redirectUrl,
         qrCodeUrl

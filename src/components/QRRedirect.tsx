@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { ExternalLink, AlertCircle, ArrowRight } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 export default function QRRedirect() {
   const [searchParams] = useSearchParams();
@@ -9,49 +10,45 @@ export default function QRRedirect() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Get the URL from the query parameter
-    const encodedUrl = searchParams.get('url');
-    
-    if (!encodedUrl) {
-      setError('No URL provided in the QR code');
+    // Get the ID from the query parameter
+    const id = searchParams.get('id');
+    if (!id) {
+      setError('No QR code ID provided in the QR code');
       return;
     }
-
-    try {
-      // Decode the URL
-      let decodedUrl = decodeURIComponent(encodedUrl);
-      
-      // Ensure URL has protocol
-      if (!decodedUrl.startsWith('http://') && !decodedUrl.startsWith('https://')) {
-        decodedUrl = `https://${decodedUrl}`;
+    // Look up the destination URL from Supabase
+    (async () => {
+      try {
+        const { data, error } = await supabase.from('qr_links').select('destination_url').eq('id', id).single();
+        if (error || !data) {
+          setError('QR code not found or has been deleted.');
+          return;
+        }
+        let decodedUrl = data.destination_url;
+        // Ensure URL has protocol
+        if (!decodedUrl.startsWith('http://') && !decodedUrl.startsWith('https://')) {
+          decodedUrl = `https://${decodedUrl}`;
+        }
+        setDestinationUrl(decodedUrl);
+        // Start countdown and redirect
+        const countdownInterval = setInterval(() => {
+          setCountdown(prev => {
+            if (prev <= 1) {
+              clearInterval(countdownInterval);
+              window.location.replace(decodedUrl);
+              return 0;
+            }
+            return prev - 1;
+          });
+        }, 1000);
+        setTimeout(() => {
+          window.location.replace(decodedUrl);
+        }, 100);
+        return () => clearInterval(countdownInterval);
+      } catch (error) {
+        setError('Error looking up QR code destination.');
       }
-      
-      setDestinationUrl(decodedUrl);
-      
-      // Start countdown and redirect
-      const countdownInterval = setInterval(() => {
-        setCountdown(prev => {
-          if (prev <= 1) {
-            clearInterval(countdownInterval);
-            // Force redirect
-            window.location.replace(decodedUrl);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-
-      // Also try immediate redirect as backup
-      setTimeout(() => {
-        window.location.replace(decodedUrl);
-      }, 100);
-
-      return () => clearInterval(countdownInterval);
-      
-    } catch (error) {
-      console.error('Error processing URL:', error);
-      setError(`Invalid URL format: ${encodedUrl}`);
-    }
+    })();
   }, [searchParams]);
 
   // Manual redirect function
